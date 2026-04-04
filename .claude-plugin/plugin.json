@@ -1,0 +1,17 @@
+{
+  "name": "skills-toolkit",
+  "version": "1.0.0",
+  "description": "Four commands for GitHub skills in Cowork: load from any repo, share installed skills, sync updates, and auto-detect pasted URLs.",
+  "author": {
+    "name": "Idan Yaron"
+  },
+  "license": "MIT",
+  "keywords": [
+    "skills",
+    "toolkit",
+    "github",
+    "cowork",
+    "sync",
+    "share"
+  ]
+}
