@@ -13,6 +13,12 @@ EXCLUDE_DIRS = {".git", "dist", "docs", "node_modules", "__pycache__"}
 EXCLUDE_FILES = {"build.py", ".gitignore"}
 EXCLUDE_EXTENSIONS = {".zip"}
 
+# Text files get line-ending normalization — the Cowork VM is Linux, and YAML
+# folded scalars in SKILL.md break if lines end in CRLF. We convert at build
+# time so the .plugin always ships LF regardless of working-tree state.
+TEXT_EXTENSIONS = {".sh", ".py", ".md", ".json", ".yml", ".yaml", ".txt"}
+TEXT_FILES = {".gitattributes", "LICENSE"}
+
 
 def should_include(path: Path) -> bool:
     parts = path.relative_to(PLUGIN_ROOT).parts
@@ -23,6 +29,10 @@ def should_include(path: Path) -> bool:
     if path.suffix in EXCLUDE_EXTENSIONS:
         return False
     return True
+
+
+def is_text(path: Path) -> bool:
+    return path.suffix in TEXT_EXTENSIONS or path.name in TEXT_FILES
 
 
 def main():
@@ -39,7 +49,11 @@ def main():
                 if not should_include(full_path):
                     continue
                 arc_name = full_path.relative_to(PLUGIN_ROOT).as_posix()
-                zf.write(full_path, arc_name)
+                if is_text(full_path):
+                    content = full_path.read_bytes().replace(b"\r\n", b"\n")
+                    zf.writestr(arc_name, content)
+                else:
+                    zf.write(full_path, arc_name)
 
     print(f"Contents of {zip_path.name}:")
     with zipfile.ZipFile(zip_path, "r") as zf:
