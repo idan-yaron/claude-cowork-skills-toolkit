@@ -44,7 +44,7 @@ Claude: `roadmap-planning` references `discovery-process` — including it.
 Or build from source:
 
 ```bash
-python build.py
+python3 build.py
 # Output: dist/skills-toolkit.zip
 ```
 

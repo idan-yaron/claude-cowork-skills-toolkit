@@ -3,10 +3,11 @@ name: skills-save
 description: >
   Save the current in-conversation version of loaded skills as a new plugin.
   Use when the user says "save these skills", "save my iterated skills", "save
-  loaded", "package what I've been working on", "save this as a plugin", or
-  runs /skills-save. Captures the CURRENT state from this conversation
-  (including any iterations the user and assistant made), not the original
-  GitHub version. For fetching from GitHub, use /skills-load instead.
+  loaded", "package what I've been working on", "save this as a plugin",
+  "install what I loaded", "I forgot to click save plugin", or runs
+  /skills-save. Captures the CURRENT state from this conversation — iterated
+  versions if any, originals otherwise. For fetching from GitHub, use
+  /skills-load instead.
 argument-hint: "[plugin-name]"
 user-invocable: true
 allowed-tools:
@@ -18,33 +19,31 @@ allowed-tools:
 
 # Save Loaded Skills as a New Plugin
 
-Package skills that have been loaded and iterated on in THIS conversation as
-a fresh `.plugin` file. The saved plugin contains the CURRENT in-context
-version of each skill — incorporating any edits, additions, or refinements
-made during the conversation.
+Package the skills loaded in THIS conversation as a fresh `.plugin` file —
+either the iterated versions (if you modified them), or the originals (if you
+loaded but never clicked Save plugin). The saved plugin reflects the current
+in-context state.
 
-**This is for saving iterations.** To fetch skills from GitHub, use
-`/skills-load`. To refresh installed plugins from their GitHub sources, use
-`/skills-update`. To package already-installed skills for sharing, use
+**This saves what `/skills-load` brought in.** To fetch skills from GitHub,
+use `/skills-load`. To refresh installed plugins from their GitHub sources,
+use `/skills-update`. To package already-installed skills for sharing, use
 `/skills-share`.
 
 ## When to use this
 
-- You ran `/skills-load <github-url>` earlier this conversation
-- You then iterated on one or more of those skills (modified steps, reworded,
-  added examples, etc.)
-- You want to save those ITERATED versions as a new plugin — separate from
-  the original GitHub versions
+- You ran `/skills-load <github-url>` and iterated one or more skills — save the iterated versions
+- You ran `/skills-load <github-url>` but never clicked Save plugin — save it now so you can install with one click
+- You want a named snapshot of the current in-context skill state
 
 ## How it works
 
 Skills loaded via `/skills-load` are injected into the conversation as
-`### LOADED SKILL: {name}` blocks. This skill gathers skills from two sources:
-(A) those conversation markers — which preserve any iterations you made — and
-(B) already-installed `skills-toolkit` plugins on disk, as a fallback when
-markers were lost to conversation compaction. It then synthesizes each skill's
-current state (Source A only, incorporating iterations) and packages into a
-new `.plugin` file presented for install via Cowork's "Save plugin" button.
+`### LOADED SKILL: {name}` blocks. This skill gathers skills from two sources
+unconditionally — (A) conversation markers, which preserve any iterations, and
+(B) already-installed `skills-toolkit` plugins on disk — then cross-references
+them to pick the right action: save iterations, install a load that was never
+saved, save originals post-compaction, or report nothing to do. The result is
+packaged as a `.plugin` file presented for install via Cowork's "Save plugin" button.
 
 ## Step 1: Discover loaded skills (two sources)
 
@@ -62,7 +61,7 @@ marker, extract:
 This source preserves any iterations you made during the conversation. It's
 the happy path when conversation context is intact.
 
-### Source B: Installed plugins on disk (fallback — survives compaction)
+### Source B: Installed plugins on disk
 
 Run the discovery script to find skills-toolkit plugins already installed in
 this Cowork session:
@@ -75,41 +74,72 @@ Returns a JSON array of `{pluginName, pluginRoot, manifestPath, skills: [{name, 
 The script already filters for the `skills-toolkit` keyword and excludes plugins
 tagged `iterated` (those are already saved).
 
-This source saves ORIGINALS, not iterations — the installed plugin is the
-pre-iteration snapshot from when you clicked Save plugin. Use it when markers
-are gone because Cowork compacted the conversation.
+### Cross-reference
 
-### Pick the source
+For each Source B plugin, check whether ALL of its skill names appear in
+Source A's marker set. A full match means Source A's load was previously
+saved as that installed plugin. If no plugin matches the Source A skills,
+the user loaded but never clicked Save plugin.
 
-- **If Source A has results** → use markers. Go to Step 2 (synthesize iterations).
-- **Else if Source B has results** → warn the user and confirm before
-  proceeding:
+**Never claim a plugin is installed without running Source B.** The
+discovery script is the only ground truth. Do not infer from context that
+the user clicked Save plugin — that's a hallucination.
 
-  > **Conversation markers not found — likely compacted.** Falling back to
-  > `{N}` skills-toolkit plugins installed on disk. This saves the **originals**
-  > as an `iterated-*` plugin; any iterations from this conversation are NOT
-  > captured (the edit history was in the compacted span).
-  >
-  > Found:
-  > - `{pluginName-1}` ({M1} skills)
-  > - `{pluginName-2}` ({M2} skills)
-  >
-  > Save originals as `iterated-*` plugins? Reply `yes`, pick plugin names,
-  > or `cancel`.
+### Decide by case
 
-  If the user confirms, for each chosen plugin read every `{skill.path}/SKILL.md`
-  from disk — that content is the skill body. Skip the Step 2 synthesis pass
-  (originals don't need it). Go to Step 3.
+**Case A — markers present, matching installed plugin, some skills iterated.**
+Use markers. Go to Step 2 to synthesize iterations. Save as `iterated-{name}`
+with the `iterated` keyword.
 
-- **Else (neither source has results)** →
+**Case B — markers present, matching installed plugin, nothing iterated.**
+Tell the user:
 
-  > **No skills to save.** No conversation markers AND no skills-toolkit
-  > plugins installed on disk.
-  >
-  > Run `/skills-load <github-url>` first to load skills from GitHub, then
-  > come back here.
+> **Already saved as `{pluginName}`** ({N} skills, all unchanged).
+> Nothing new to save. Reply `snapshot` to save anyway as a separate copy.
 
-  Then stop.
+Wait. If `snapshot`, proceed with the Case A flow (iterated-* naming).
+Otherwise stop.
+
+**Case C — markers present, NO matching installed plugin (never clicked Save plugin).**
+Tell the user:
+
+> **Not installed yet.** These skills came from `/skills-load` but Save plugin
+> wasn't clicked. I can package them as `{repo-name}` now so you can install
+> with one click. `/skills-update` will refresh them from upstream later.
+>
+> Plugin name? (default: `{repo-name}`)
+
+After user confirms the name, go to Step 2 (in case they iterated despite not
+installing). In Step 4, use `{repo-name}` with NO `iterated-` prefix. In Step 5,
+DROP the `iterated` keyword AND include the `repository` field (find the
+`https://github.com/...` URL from the earlier `/skills-load` output in this
+conversation).
+
+**Case D — markers empty, installed plugins found (post-compaction fallback).**
+Warn the user before proceeding:
+
+> **Conversation markers not found — likely compacted.** Falling back to
+> `{N}` skills-toolkit plugins installed on disk. This saves the **originals**
+> as an `iterated-*` plugin; any iterations from this conversation are NOT
+> captured (the edit history was in the compacted span).
+>
+> Found:
+> - `{pluginName-1}` ({M1} skills)
+> - `{pluginName-2}` ({M2} skills)
+>
+> Save originals as `iterated-*` plugins? Reply `yes`, pick plugin names, or `cancel`.
+
+If confirmed, for each chosen plugin read every `{skill.path}/SKILL.md` from
+disk. Skip Step 2's synthesis. Go to Step 3.
+
+**Case E — both empty.**
+
+> **No skills to save.** No conversation markers AND no skills-toolkit plugins
+> installed on disk.
+>
+> Run `/skills-load <github-url>` first.
+
+Stop.
 
 ## Step 2: Synthesize current state (Source A only)
 
@@ -153,10 +183,12 @@ and the Status column shows `original` for every row (no iterations to display).
 - Comma-separated numbers → include only selected
 - Plugin name string → include all, use this as plugin name
 
-**Plugin name default:** if the original `/skills-load` referenced a repo
-named `X` (check the conversation for the source repo), suggest
-`iterated-X` (e.g., `iterated-product-manager-skills`). Otherwise prompt:
-"Plugin name? (default: `iterated-skills`)".
+**Plugin name default** depends on the Step 1 case:
+
+- **Cases A, B (snapshot), D**: `iterated-{repo-name}` (e.g.,
+  `iterated-product-manager-skills`). Fallback if no repo known: `iterated-skills`.
+- **Case C** (never installed): `{repo-name}` — no `iterated-` prefix, because
+  this IS the plugin, not an iteration of one. Fallback: `skills-from-conversation`.
 
 Sanitize the plugin name: kebab-case, `[a-z0-9-]` only. Reject empty names
 and re-ask.
@@ -171,8 +203,10 @@ in Source B — the build step doesn't care which):
 python3 << 'PYEOF'
 import zipfile, json, sys, os
 
-plugin_name = sys.argv[1]          # e.g., "iterated-product-manager-skills"
+plugin_name = sys.argv[1]          # e.g., "iterated-product-manager-skills" or "geo-seo-claude"
 skills_json = sys.argv[2]          # JSON: [{"name": "...", "body": "..."}, ...]
+is_iterated = sys.argv[3] == "true"  # false for Case C (never-saved load)
+repository  = sys.argv[4] if len(sys.argv) > 4 else ""  # Case C provides GitHub URL
 
 out_dir = '/tmp/skill-outputs'
 os.makedirs(out_dir, exist_ok=True)
@@ -180,34 +214,39 @@ out = os.path.join(out_dir, plugin_name + '.plugin')
 
 skills = json.loads(skills_json)
 
-with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as zf:
-    # Plugin manifest — 'iterated' marker tells /skills-update to skip
-    manifest = json.dumps({
-        "name": plugin_name,
-        "description": "Skills iterated from Cowork session",
-        "version": "1.0.0",
-        "author": {"name": "skills-toolkit"},
-        "keywords": ["skills", "skills-toolkit", "iterated", plugin_name]
-    }, indent=2)
-    zf.writestr(".claude-plugin/plugin.json", manifest)
+keywords = ["skills", "skills-toolkit", plugin_name]
+if is_iterated:
+    keywords.insert(2, "iterated")  # tells /skills-update to skip
 
-    # Write each skill's SKILL.md from conversation content
+manifest_dict = {
+    "name": plugin_name,
+    "description": "Skills saved from Cowork session",
+    "version": "1.0.0",
+    "author": {"name": "skills-toolkit"},
+    "keywords": keywords,
+}
+if repository:
+    manifest_dict["repository"] = repository  # Case C only — lets /skills-update refresh from upstream
+
+with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as zf:
+    zf.writestr(".claude-plugin/plugin.json", json.dumps(manifest_dict, indent=2))
     for skill in skills:
-        skill_name = skill['name']
-        body = skill['body']
-        zf.writestr(f"skills/{skill_name}/SKILL.md", body)
+        zf.writestr(f"skills/{skill['name']}/SKILL.md", skill['body'])
 
 print(out)
 PYEOF
 ```
 
-Pass the plugin name + JSON array of `{name, body}` objects containing the
-synthesized current state of each skill.
+Pass the plugin name + JSON array of `{name, body}` objects + `is_iterated`
+flag (`true` for Cases A/B/D, `false` for Case C) + `repository` URL (Case C
+only, drop otherwise).
 
-**Manifest keywords include `"iterated"`** — this tells `/skills-update`
-these plugins have no upstream to refresh against, so it skips them.
+**Case C manifest:** no `iterated` keyword, includes `repository` field.
+`/skills-update` will later find it via the `skills-toolkit` keyword and
+refresh it from the repo URL, same pattern as a fresh `/skills-load`.
 
-**No `repository` field** — iterated plugins have no GitHub source.
+**All other cases:** `iterated` keyword is present, no `repository` field —
+tells `/skills-update` to skip these (they have no upstream).
 
 ## Step 6: Present the .plugin file to Cowork
 
@@ -255,11 +294,11 @@ This keeps them usable immediately, even before the user clicks Save plugin.
 > | discovery-process | unchanged (kept original) |
 > | competitive-analysis | iterated |
 >
-> **Click "Save plugin"** on the preview above to install the iterated
-> versions. They'll appear in your `/` menu immediately.
+> **Click "Save plugin"** on the preview above to install. The skills will
+> appear in your `/` menu immediately.
 >
-> The original `/skills-load` plugin (if still installed) is untouched —
-> this saves AS A SEPARATE PLUGIN with name `{plugin-name}`.
+> If an original `/skills-load` plugin is already installed, it stays
+> untouched — this saves AS A SEPARATE PLUGIN named `{plugin-name}`.
 
 If all skills came from Source B (installed-plugin fallback), add this note:
 
@@ -271,12 +310,12 @@ If all skills came from Source B (installed-plugin fallback), add this note:
 
 ## Edge cases
 
-- **No `### LOADED SKILL:` markers in conversation**: Fall back to Source B
-  (installed plugins on disk). If Source B is also empty, exit with a pointer
-  to `/skills-load`. No plugin is built.
-- **Markers AND installed plugins both exist for the same skills**: Source A
-  wins (iterations are more valuable than originals). Mention in the summary
-  that disk copies exist but aren't being used.
+- **No `### LOADED SKILL:` markers in conversation**: Go to Step 1's Case D
+  (installed plugins on disk) or Case E (both empty). No plugin is built in
+  Case E.
+- **Markers present but Source A's skills don't fully match ANY installed plugin**:
+  Case C — user never clicked Save plugin for this load. Offer to install
+  via `/skills-save` with no `iterated-` prefix.
 - **Multiple `/skills-load` runs from different repos**: Show a single
   table listing ALL found skills across sources. Let the user pick which
   to save. Offer "iterated-mixed" as a default name if sources differ.
