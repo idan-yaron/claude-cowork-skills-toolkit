@@ -1,11 +1,11 @@
 ---
-name: update-skills
+name: skills-update
 description: >
   Refresh plugins previously installed by skills-toolkit by re-fetching
   their GitHub sources and presenting updated .plugin files to Cowork. Use
   when the user says "update my loaded skills", "refresh skills from github",
   "pull latest skills", "sync skills-toolkit plugins", "check for skill
-  updates", or runs /update-skills. Identifies target plugins via the
+  updates", or runs /skills-update. Identifies target plugins via the
   skills-toolkit keyword marker embedded in plugin.json — does not touch
   domain plugins or unrelated SkillsPlugin entries.
 argument-hint: "[skill-name... | --all]"
@@ -22,19 +22,19 @@ allowed-tools:
 
 Re-fetch the GitHub sources for plugins previously installed by
 skills-toolkit, detect what changed, and rebuild each plugin with fresh
-content. Cowork's "Accept" flow replaces each installed plugin in-place.
+content. Cowork's "Save plugin" flow replaces each installed plugin in-place.
 
 ## How it works
 
-Every `.plugin` that `/load-skills` builds embeds its source URL in
+Every `.plugin` that `/skills-load` builds embeds its source URL in
 `plugin.json.repository` and tags itself with `"skills-toolkit"` in
 `keywords`. This command scans all installed plugins for that marker, reads
 the repository URL, re-clones, diffs each `SKILL.md` by SHA256, and rebuilds
-the plugin with the same name — so Accept replaces the installed version.
+the plugin with the same name — so Save plugin replaces the installed version.
 
 Because the source URL lives inside the installed plugin itself, updates work
 across session restarts, VM reboots, and conversation compaction. No
-`/load-skills` rerun needed.
+`/skills-load` rerun needed.
 
 ## VM constraints
 
@@ -54,7 +54,7 @@ If empty:
 
 > **No skills-toolkit plugins found.**
 >
-> Run `/load-skills <github-url>` to install skills first, then come back
+> Run `/skills-load <github-url>` to install skills first, then come back
 > here to refresh them.
 
 Then stop.
@@ -144,7 +144,7 @@ For `removed_upstream` skills, ask a follow-up per-skill before building:
 
 For each plugin that needs a rebuild (has at least one refreshed or dropped
 skill), build a new `.plugin` ZIP. Contents must include ALL of the plugin's
-skills (Cowork's Accept REPLACES the entire plugin — omitting unchanged
+skills (Cowork's Save plugin REPLACES the entire plugin — omitting unchanged
 skills would silently remove them):
 
 - `updated` skills → use fresh `SKILL.md` (+ any fresh supporting files) from
@@ -187,7 +187,7 @@ PYEOF
 ```
 
 Pass the original plugin.json string (already includes the repository URL
-and keywords) to preserve traceability for future `/update-skills` runs.
+and keywords) to preserve traceability for future `/skills-update` runs.
 
 ## Step 9: Present each .plugin to Cowork
 
@@ -201,7 +201,7 @@ Then call it with /tmp/skill-outputs/{plugin-name}.plugin
 Tell the user what to click:
 
 > **Plugin `{plugin-name}` refreshed** — {N} skills updated. Click
-> **"Accept"** on the preview above. Cowork will prompt to replace the
+> **"Save plugin"** on the preview above. Cowork will prompt to replace the
 > existing version.
 
 If multiple plugins were rebuilt, present them in separate messages so each
@@ -215,7 +215,7 @@ Customize > Plugins.
 ## Step 10: Inject updated content
 
 For each refreshed skill, output the fresh `SKILL.md` body inline so it's
-usable immediately, even before the user clicks Accept:
+usable immediately, even before the user clicks Save plugin:
 
 ```
 ### LOADED SKILL: {skill-name} (updated)
@@ -237,26 +237,26 @@ plugin.
 >
 > | Plugin | Refreshed | Dropped | Click to install |
 > |--------|-----------|---------|------------------|
-> | product-manager-skills | roadmap-planning | competitive-analysis | Accept preview above |
-> | retros-toolkit | team-retro | — | Accept preview above |
+> | product-manager-skills | roadmap-planning | competitive-analysis | Save plugin preview above |
+> | retros-toolkit | team-retro | — | Save plugin preview above |
 >
-> Skills are active in this conversation immediately. Run `/update-skills`
+> Skills are active in this conversation immediately. Run `/skills-update`
 > again anytime to re-check.
 
 ## Edge cases
 
 - **No skills-toolkit plugins installed**: Friendly exit with a pointer
-  to `/load-skills`.
+  to `/skills-load`.
 - **Source repo deleted (404)**: Per-plugin warning, skip, continue with
   others.
 - **GitHub rate limit**: In-run caching already dedupes repo fetches. If
   still hitting the limit, suggest setting `GITHUB_TOKEN`.
 - **Plugin.json missing `repository` field** (older version, pre-marker):
   Warn: "Plugin `{name}` has no repository URL — cannot refresh. Re-run
-  `/load-skills <url>` to re-register it."
+  `/skills-load <url>` to re-register it."
 - **Skill renamed upstream**: Treated as `removed_upstream` plus a "new"
   skill the user didn't ask for. For now, just surface as `removed_upstream`
-  — the user can re-run `/load-skills` to pick up renames.
+  — the user can re-run `/skills-load` to pick up renames.
 - **Dependencies auto-added in original load now dropped upstream**:
   Surfaces as `removed_upstream`, user decides.
 - **User declines in step 7**: Exit without rebuilding. No Cowork state

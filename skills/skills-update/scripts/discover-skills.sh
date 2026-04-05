@@ -3,7 +3,7 @@
 # Usage: discover-skills.sh <repo-path>
 # Outputs JSON array of discovered skills to stdout
 #
-# DUPLICATED from skills/load-skills/scripts/discover-skills.sh — keep in sync.
+# DUPLICATED from skills/skills-load/scripts/discover-skills.sh — keep in sync.
 # Each skill is self-contained with its own scripts (convention in this plugin).
 
 set -euo pipefail

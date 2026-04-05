@@ -25,7 +25,7 @@ The user has shared a GitHub URL. Recognize it and offer to browse its skills.
    > "I can check this repo for skills and show you what's available.
    > Want me to take a look?"
 
-4. **When the user confirms**, run `/load-skills <url>`. This shows a numbered
+4. **When the user confirms**, run `/skills-load <url>`. This shows a numbered
    catalog — the user picks which skills to install as a plugin.
 
 5. **If the URL doesn't look like a skills repo**, still offer:
@@ -35,6 +35,6 @@ The user has shared a GitHub URL. Recognize it and offer to browse its skills.
 
 - Be conversational, not robotic
 - The catalog-first approach means the user picks what they need — no bulk loading
-- Selected skills get packaged as a `.plugin` file and presented with an
-  "Accept" button for one-click installation into the `/` menu
+- Selected skills get packaged as a `.plugin` file and presented with a
+  "Save plugin" button for one-click installation into the `/` menu
 - Skills are also injected into the conversation for immediate use

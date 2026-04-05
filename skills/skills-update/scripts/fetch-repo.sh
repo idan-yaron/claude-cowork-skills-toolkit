@@ -3,7 +3,7 @@
 # Usage: fetch-repo.sh <github-url> [branch]
 # Outputs the path to the cloned/extracted directory on stdout
 #
-# DUPLICATED from skills/load-skills/scripts/fetch-repo.sh — keep in sync.
+# DUPLICATED from skills/skills-load/scripts/fetch-repo.sh — keep in sync.
 # Each skill is self-contained with its own scripts (convention in this plugin).
 
 set -euo pipefail
