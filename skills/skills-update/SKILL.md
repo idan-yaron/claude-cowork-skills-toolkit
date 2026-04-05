@@ -240,7 +240,7 @@ preview is visible.
 If `mcp__cowork__present_files` isn't available, try
 `mcp__cowork__create_artifact`, or fall back to writing the `.plugin` to the
 host via the Write tool and telling the user to upload via
-Customize > Plugins.
+Customize > Personal Plugin.
 
 ## Step 10: Inject updated content
 
@@ -293,6 +293,6 @@ plugin.
   touched.
 - **`mcp__cowork__present_files` unavailable**: Inline context injection
   still runs (updated skills usable immediately). Mention manual install
-  path via Customize > Plugins.
+  path via Customize > Personal Plugin.
 - **Multiple plugins, some fail to fetch**: Finish the ones that worked,
   report failures in the summary table.

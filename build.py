@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-"""Package skills-toolkit as .plugin with correct forward-slash paths."""
+"""Package skills-toolkit as .zip with correct forward-slash paths."""
 
 import os
-import shutil
 import zipfile
 from pathlib import Path
 
@@ -12,7 +11,7 @@ PLUGIN_NAME = "skills-toolkit"
 
 EXCLUDE_DIRS = {".git", "dist", "docs", "node_modules", "__pycache__"}
 EXCLUDE_FILES = {"build.py", ".gitignore"}
-EXCLUDE_EXTENSIONS = {".zip", ".plugin"}
+EXCLUDE_EXTENSIONS = {".zip"}
 
 
 def should_include(path: Path) -> bool:
@@ -29,10 +28,8 @@ def should_include(path: Path) -> bool:
 def main():
     DIST_DIR.mkdir(exist_ok=True)
     zip_path = DIST_DIR / f"{PLUGIN_NAME}.zip"
-    plugin_path = DIST_DIR / f"{PLUGIN_NAME}.plugin"
 
     zip_path.unlink(missing_ok=True)
-    plugin_path.unlink(missing_ok=True)
 
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
         for root, dirs, files in os.walk(PLUGIN_ROOT):
@@ -49,12 +46,9 @@ def main():
         for info in zf.infolist():
             print(f"  {info.filename}  ({info.file_size} bytes)")
 
-    shutil.copy2(zip_path, plugin_path)
-
     size = zip_path.stat().st_size
     print(f"\nPackaged ({size:,} bytes):")
     print(f"  {zip_path}")
-    print(f"  {plugin_path}")
 
 
 if __name__ == "__main__":

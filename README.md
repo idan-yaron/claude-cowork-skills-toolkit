@@ -2,7 +2,7 @@
 
 Five commands for moving skills between GitHub, your Cowork session, and your teammates.
 
-Cowork is Anthropic's agentic AI system for knowledge work, with a built-in skill/plugin system. New Claude skills ship on GitHub all the time. This toolkit cuts the time between finding one and using it down to a single `/` command, even mid-session. Five commands: install from a GitHub URL, save iterated versions from this conversation, share installed skills with teammates as a `.zip` plugin, refresh against upstream, and auto-detect URLs pasted in chat.
+Cowork is Anthropic's agentic AI system for knowledge work, with a built-in skill/plugin system. New Claude skills ship on GitHub all the time. This toolkit cuts the time between finding one and using it down to a single `/` command, even mid-session. Five commands: install from a GitHub URL, save iterated versions from a conversation, share installed skills with teammates as a `.zip` plugin, refresh against upstream, and auto-detect URLs pasted in chat.
 
 ## The toolkit
 
@@ -38,13 +38,14 @@ Claude: `roadmap-planning` references `discovery-process` — including it.
 
 ## Install
 
-Upload `dist/skills-toolkit.plugin` to Cowork via **Customize > Plugins > Upload plugin**.
+1. **Download** `skills-toolkit.zip` from the [latest release](https://github.com/idan-yaron/claude-cowork-skills-toolkit/releases/latest)
+2. **Upload** it to Cowork: **Customize → Personal Plugin (+) → Create plugin → Upload plugin**
 
 Or build from source:
 
 ```bash
 python build.py
-# Output: dist/skills-toolkit.plugin
+# Output: dist/skills-toolkit.zip
 ```
 
 ## Commands
