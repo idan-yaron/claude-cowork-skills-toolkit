@@ -1,0 +1,16 @@
+# Force LF line endings for all text files — the Cowork VM is Linux.
+* text=auto eol=lf
+
+# Shell scripts MUST be LF. Bash in the VM breaks on \r.
+*.sh text eol=lf
+
+# Python, Markdown, JSON, YAML — LF is standard and safe.
+*.py text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Binary artifacts — do not touch.
+*.plugin binary
+*.zip binary
