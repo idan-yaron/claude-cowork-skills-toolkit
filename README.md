@@ -2,7 +2,7 @@
 
 Four commands for moving skills between GitHub, your Cowork session, and your teammates.
 
-Cowork is Anthropic's agentic AI system for knowledge work, with a built-in skill/plugin system. New Claude skills ship on GitHub constantly, but each install is a manual project — find the repo, figure out its layout, zip, upload, restart — and updates mean repeating it all. Sharing yours with teammates means packaging by hand. Four commands, one per friction point.
+Cowork is Anthropic's agentic AI system for knowledge work, with a built-in skill/plugin system. New Claude skills ship on GitHub all the time. This toolkit cuts the time between finding one and using it down to a single `/` command, even mid-session. Four commands: install from a GitHub URL, refresh against upstream, share installed skills with teammates as a `.zip` plugin, and auto-detect URLs pasted in chat.
 
 ## The toolkit
 
