@@ -56,7 +56,7 @@ def enumerate_skills(plugin_root):
         pass
     return results
 
-# Candidate glob patterns where Accept-installed .plugin files may land.
+# Candidate glob patterns where user-installed .plugin files may land.
 # The architecture doc says uploaded plugins go to cowork_plugins/cache/ (host)
 # which is mounted at .local-plugins/cache/ (VM). Exact subdirectory structure
 # for user-installed (vs marketplace) plugins is not 100% documented, so we
@@ -76,7 +76,7 @@ for pat in patterns:
         candidates.add(p)
 
 # Broad fallback: find any plugin.json under /sessions/*/mnt (bounded depth).
-# This catches Accept-installed plugins wherever Cowork actually puts them.
+# This catches user-installed plugins wherever Cowork actually puts them.
 try:
     sessions_roots = glob.glob('/sessions/*/mnt')
     for root in sessions_roots:

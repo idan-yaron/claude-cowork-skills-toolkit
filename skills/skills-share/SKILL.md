@@ -1,12 +1,12 @@
 ---
-name: share-skill
+name: skills-share
 description: >
   Package skills already installed in your Cowork session as a downloadable
   .zip file you can save to disk and share. Use when user says "share my
   skills", "export installed skills", "download my skills", "send these
-  skills to a colleague", "package skills for sharing", or runs /share-skill.
+  skills to a colleague", "package skills for sharing", or runs /skills-share.
   This is for exporting skills you ALREADY have — to get skills from a GitHub
-  repo, use /load-skills instead.
+  repo, use /skills-load instead.
 argument-hint: "[skill-name... | --all]"
 user-invocable: true
 allowed-tools:
@@ -25,11 +25,11 @@ Desktop, Documents, a project folder, Slack, email attachment.
 
 **This skill does NOT install the exported plugin back into Cowork.** The
 skills are already installed. The `.zip` format deliberately avoids the
-"Accept"/"Save skill" install prompts that `.plugin`/`.skill` extensions
+"Save plugin"/"Save skill" install prompts that `.plugin`/`.skill` extensions
 trigger — the user gets a standard file download instead.
 
 **This skill is for exporting what you already have.** To get new skills from
-a GitHub repo, use `/load-skills`.
+a GitHub repo, use `/skills-load`.
 
 ## VM constraints (why we use /outputs and .zip)
 
@@ -50,14 +50,14 @@ they want via their OS file picker.
   in this skill.
 - **`mcp__cowork__present_files`** surfaces the built ZIP for download.
 
-## When to use this vs /load-skills
+## When to use this vs /skills-load
 
 | Situation | Use |
 |-----------|-----|
-| "I found a repo with skills I want" | `/load-skills <url>` |
-| "I want to send skills from my session to a colleague" | `/share-skill` |
-| "I want to archive the skills I use" | `/share-skill` |
-| "I want to hand off skills whose GitHub source is gone" | `/share-skill` |
+| "I found a repo with skills I want" | `/skills-load <url>` |
+| "I want to send skills from my session to a colleague" | `/skills-share` |
+| "I want to archive the skills I use" | `/skills-share` |
+| "I want to hand off skills whose GitHub source is gone" | `/skills-share` |
 
 ## Step 1: Enumerate installed skills
 
@@ -72,7 +72,7 @@ If the array is empty:
 
 > **No skills installed in this session.**
 >
-> Use `/load-skills <github-url>` to install skills from a repo first.
+> Use `/skills-load <github-url>` to install skills from a repo first.
 
 Then stop.
 
@@ -121,7 +121,7 @@ the selection. If found:
 > but not selected). The shared plugin may point to a skill the recipient
 > doesn't have. Include it? (y/n)
 
-User stays in control. Share-skill is a packaging tool, not a curator.
+User stays in control. Skills-share is a packaging tool, not a curator.
 
 ## Step 4: Build the .zip inside the VM
 
@@ -174,7 +174,7 @@ Pass the sanitized package name and all skill paths as arguments. Capture the
 output path (e.g., `/outputs/my-shared-skills.zip`).
 
 **Why `.zip` not `.plugin`:** presenting a `.plugin` file via `present_files`
-triggers Cowork's "Accept" install button, which is wrong here — the user
+triggers Cowork's "Save plugin" install button, which is wrong here — the user
 already has these skills installed. `.zip` surfaces as a plain download, and
 it's still directly accepted by Customize > Plugins on the receiving end.
 
@@ -219,7 +219,7 @@ outputs folder on disk.
 
 ## Edge cases
 
-- **No skills installed**: Exit with a suggestion to run `/load-skills` first.
+- **No skills installed**: Exit with a suggestion to run `/skills-load` first.
 - **Skill with only SKILL.md (no supporting files)**: Works fine — the ZIP
   just contains the manifest and one SKILL.md.
 - **User picks skills from multiple sources**: Fine, all get bundled together.

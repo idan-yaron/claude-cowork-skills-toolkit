@@ -1,10 +1,10 @@
 ---
-name: load-skills
+name: skills-load
 description: >
   Load skills from a GitHub repository into the current Cowork session as a 
   unified plugin. Use when the user says "load skills from GitHub", "import 
   skills from repo", "add skills from URL", "install skills from this link", 
-  or runs /load-skills with a GitHub URL. Also trigger when the user pastes a 
+  or runs /skills-load with a GitHub URL. Also trigger when the user pastes a 
   GitHub URL and mentions skills, plugins, or Claude capabilities they want to add.
 argument-hint: <github-url>
 user-invocable: true
@@ -25,7 +25,7 @@ selected skills as a single `.plugin` file that installs into Cowork with one cl
 
 Cowork's plugin system accepts `.plugin` files (ZIP archives with a standard
 directory layout). When presented via `mcp__cowork__present_files`, Cowork
-renders a rich preview with an **"Accept"** button. Clicking it installs the
+renders a rich preview with an **"Save plugin"** button. Clicking it installs the
 entire plugin — all skills appear in the `/` menu immediately, mid-session.
 
 This is better than installing skills individually because:
@@ -34,7 +34,7 @@ This is better than installing skills individually because:
 - The plugin can be shared as a single file
 
 Skills are also injected into the conversation for immediate use, even before
-the user clicks Accept.
+the user clicks Save plugin.
 
 ## VM constraints
 
@@ -124,7 +124,7 @@ Returns a JSON array of skill names present in the SkillsPlugin registry,
 domain plugins, and remote plugins.
 
 **B. Conversation-loaded skills** — scan THIS conversation for any
-`### LOADED SKILL: {name}` headers from earlier `/load-skills` runs. Those
+`### LOADED SKILL: {name}` headers from earlier `/skills-load` runs. Those
 skills are already active in context.
 
 **Compare both lists against the selected skills.** If any overlap:
@@ -227,7 +227,7 @@ Then call it with /tmp/skill-outputs/{repo-name}.plugin
 ```
 
 Cowork renders a **rich preview** showing the plugin contents. The user can
-browse the included skills and click **"Accept"** to install the entire plugin
+browse the included skills and click **"Save plugin"** to install the entire plugin
 at once. All skills appear in the `/` menu immediately.
 
 If `present_files` isn't available, try `mcp__cowork__create_artifact`.
@@ -259,7 +259,7 @@ dependencies first, then the skills that reference them.
 > | roadmap-planning | Selected |
 > | competitive-analysis | Selected |
 >
-> **Click "Accept"** on the plugin preview above to install all skills at once.
+> **Click "Save plugin"** on the plugin preview above to install all skills at once.
 > They'll appear in your `/` menu immediately.
 >
 > Skills are already active in this conversation — try them by name.
@@ -282,10 +282,10 @@ conversation ends.
   by name). The `.plugin` file is still at `/tmp/skill-outputs/{name}.plugin`
   inside the VM — tell the user it's there, or write it to the host via the
   Write tool so they can upload manually via Customize > Plugins.
-- **Name conflict with existing plugin**: Warn the user. Accepting will replace
-  the existing plugin with the same name.
+- **Name conflict with existing plugin**: Warn the user. Saving the plugin will
+  replace the existing plugin with the same name.
 - **MCP servers in repo**: Note that `.mcp.json` configs need separate setup and
   can't be loaded mid-session.
 - **Large repos (>10 skills)**: Warn before loading all. Suggest a focused subset.
 - **Single skill with no dependencies**: Still package as a `.plugin` for
-  consistency. The one-click Accept flow works the same way.
+  consistency. The one-click Save plugin flow works the same way.
