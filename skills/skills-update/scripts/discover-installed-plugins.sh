@@ -7,6 +7,7 @@
 #   {
 #     "pluginName": "product-manager-skills",
 #     "repository": "https://github.com/deanpeters/Product-Manager-Skills",
+#     "source": {"branch": "main", "subpath": "", "sha": "abc1234...", "installedAt": "2026-04-05T..."},
 #     "pluginRoot": "/sessions/.../mnt/.local-plugins/cache/.../.../0.1.0",
 #     "manifestPath": "/sessions/.../mnt/.local-plugins/cache/.../.claude-plugin/plugin.json",
 #     "keywords": ["skills", "skills-toolkit", "product-manager-skills"],
@@ -15,6 +16,12 @@
 #     ]
 #   }
 # ]
+#
+# The `source` object is only present if the manifest has it (plugins built
+# AFTER the source-provenance feature shipped). Older plugins have empty-string
+# values for all source fields. Plugins tagged with "iterated" keyword are
+# SKIPPED — they were built by /skills-save from in-conversation content and
+# have no upstream to refresh against.
 
 set -euo pipefail
 
@@ -115,17 +122,33 @@ for manifest_path in sorted(candidates):
         continue
     if 'skills-toolkit' not in keywords:
         continue
+    # Skip iterated plugins (built by /skills-save) — no upstream to refresh.
+    if 'iterated' in keywords:
+        continue
 
     plugin_name = data.get('name', os.path.basename(plugin_root))
     repository = data.get('repository', '')
     if isinstance(repository, dict):
         repository = repository.get('url', '')
 
+    # Extract source provenance (branch, subpath, sha, installedAt).
+    # Missing for older plugins installed before the provenance feature.
+    raw_source = data.get('source', {}) or {}
+    if not isinstance(raw_source, dict):
+        raw_source = {}
+    source_info = {
+        'branch': raw_source.get('branch', '') or '',
+        'subpath': raw_source.get('subpath', '') or '',
+        'sha': raw_source.get('sha', '') or '',
+        'installedAt': raw_source.get('installedAt', '') or '',
+    }
+
     skills = enumerate_skills(plugin_root)
 
     results.append({
         'pluginName': plugin_name,
         'repository': repository,
+        'source': source_info,
         'pluginRoot': plugin_root,
         'manifestPath': manifest_path,
         'keywords': keywords,
