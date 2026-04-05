@@ -1,6 +1,6 @@
 {
   "name": "skills-toolkit",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Five commands for GitHub skills in Cowork: load from any repo, save iterated versions, share installed skills, sync updates, and auto-detect pasted URLs.",
   "author": {
     "name": "Idan Yaron"
