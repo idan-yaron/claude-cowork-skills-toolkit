@@ -176,7 +176,7 @@ output path (e.g., `/outputs/my-shared-skills.zip`).
 **Why `.zip` not `.plugin`:** presenting a `.plugin` file via `present_files`
 triggers Cowork's "Save plugin" install button, which is wrong here — the user
 already has these skills installed. `.zip` surfaces as a plain download, and
-it's still directly accepted by Customize > Plugins on the receiving end.
+it's still directly accepted by Customize > Personal Plugin on the receiving end.
 
 **Why `/outputs/` not `/tmp/`:** `/outputs/` is a VM→host bridge mount that
 `present_files` surfaces in the Cowork UI. `/tmp/` is VM-only.
@@ -212,7 +212,7 @@ outputs folder on disk.
 >
 > **To use/share it:**
 > - **Send to a colleague**: Email, Slack, or attach the `.zip` directly.
-> - **Install in Cowork**: Customize > Plugins > Upload plugin (accepts
+> - **Install in Cowork**: Customize > Personal Plugin (+) > Create plugin > Upload plugin (accepts
 >   `.zip` directly — no renaming needed).
 > - **Use with Claude Code CLI**: Extract the `.zip`, then
 >   `claude --plugin-dir ./{pkg-name}/`

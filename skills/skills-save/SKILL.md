@@ -226,7 +226,7 @@ prefix).
 
 If `present_files` is unavailable, fall back to `mcp__cowork__create_artifact`
 or write the `.plugin` to the host via the Write tool for manual upload
-via Customize > Plugins.
+via Customize > Personal Plugin.
 
 ## Step 7: Re-inject into conversation
 

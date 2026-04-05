@@ -307,7 +307,7 @@ conversation ends.
 - **present_files unavailable**: Skills are still injected into context (usable
   by name). The `.plugin` file is still at `/tmp/skill-outputs/{name}.plugin`
   inside the VM — tell the user it's there, or write it to the host via the
-  Write tool so they can upload manually via Customize > Plugins.
+  Write tool so they can upload manually via Customize > Personal Plugin.
 - **Name conflict with existing plugin**: Warn the user. Saving the plugin will
   replace the existing plugin with the same name.
 - **MCP servers in repo**: Note that `.mcp.json` configs need separate setup and
