@@ -39,12 +39,18 @@ made during the conversation.
 ## How it works
 
 Skills loaded via `/skills-load` are injected into the conversation as
-`### LOADED SKILL: {name}` blocks. This skill scans the conversation for
-those markers, synthesizes each skill's current state (incorporating
-iterations), and packages them into a new `.plugin` file presented for
-install via Cowork's "Save plugin" button.
+`### LOADED SKILL: {name}` blocks. This skill gathers skills from two sources:
+(A) those conversation markers — which preserve any iterations you made — and
+(B) already-installed `skills-toolkit` plugins on disk, as a fallback when
+markers were lost to conversation compaction. It then synthesizes each skill's
+current state (Source A only, incorporating iterations) and packages into a
+new `.plugin` file presented for install via Cowork's "Save plugin" button.
 
-## Step 1: Scan conversation for loaded skills
+## Step 1: Discover loaded skills (two sources)
+
+Skills can come from two sources. Gather from BOTH, then decide which to use.
+
+### Source A: Conversation markers (primary — captures iterations)
 
 Find all `### LOADED SKILL: {name}` markers in this conversation. For each
 marker, extract:
@@ -53,19 +59,65 @@ marker, extract:
 - The body content (everything until the next `---` separator or next
   `### LOADED SKILL:` block)
 
-If no markers are found:
+This source preserves any iterations you made during the conversation. It's
+the happy path when conversation context is intact.
 
-> **No loaded skills found in this conversation.**
->
-> Run `/skills-load <github-url>` first to load skills from GitHub, then
-> come back here to save iterated versions.
+### Source B: Installed plugins on disk (fallback — survives compaction)
 
-Then stop.
+Run the discovery script to find skills-toolkit plugins already installed in
+this Cowork session:
 
-## Step 2: Synthesize current state
+```bash
+bash "${CLAUDE_SKILL_DIR}/scripts/discover-installed-plugins.sh"
+```
 
-For each loaded skill, examine the conversation holistically to determine
-its CURRENT state:
+Returns a JSON array of `{pluginName, pluginRoot, manifestPath, skills: [{name, path, currentSha}]}`.
+The script already filters for the `skills-toolkit` keyword and excludes plugins
+tagged `iterated` (those are already saved).
+
+This source saves ORIGINALS, not iterations — the installed plugin is the
+pre-iteration snapshot from when you clicked Save plugin. Use it when markers
+are gone because Cowork compacted the conversation.
+
+### Pick the source
+
+- **If Source A has results** → use markers. Go to Step 2 (synthesize iterations).
+- **Else if Source B has results** → warn the user and confirm before
+  proceeding:
+
+  > **Conversation markers not found — likely compacted.** Falling back to
+  > `{N}` skills-toolkit plugins installed on disk. This saves the **originals**
+  > as an `iterated-*` plugin; any iterations from this conversation are NOT
+  > captured (the edit history was in the compacted span).
+  >
+  > Found:
+  > - `{pluginName-1}` ({M1} skills)
+  > - `{pluginName-2}` ({M2} skills)
+  >
+  > Save originals as `iterated-*` plugins? Reply `yes`, pick plugin names,
+  > or `cancel`.
+
+  If the user confirms, for each chosen plugin read every `{skill.path}/SKILL.md`
+  from disk — that content is the skill body. Skip the Step 2 synthesis pass
+  (originals don't need it). Go to Step 3.
+
+- **Else (neither source has results)** →
+
+  > **No skills to save.** No conversation markers AND no skills-toolkit
+  > plugins installed on disk.
+  >
+  > Run `/skills-load <github-url>` first to load skills from GitHub, then
+  > come back here.
+
+  Then stop.
+
+## Step 2: Synthesize current state (Source A only)
+
+**Skip this step entirely if Step 1 chose Source B** — those are originals
+read from disk. They don't need synthesis.
+
+For each Source A skill (from conversation markers), examine the conversation
+holistically to determine its CURRENT state:
 
 - If the skill was discussed/modified/iterated on after the initial injection
   (e.g., user said "add a step for X", "reword the intro", "make it more
@@ -77,19 +129,23 @@ not a full diff, just enough for the user to confirm).
 
 ## Step 3: Show the summary
 
-Display a compact table:
+Display a compact table with a Source column so the user can tell which
+skills came from conversation markers vs. the installed-plugin fallback:
 
-> **Found {N} loaded skills in this conversation:**
+> **Found {N} skills to save:**
 >
-> | # | Skill | Status | Notes |
-> |---|-------|--------|-------|
-> | 1 | roadmap-planning | iterated | Added stakeholder-review step |
-> | 2 | discovery-process | unchanged | — |
-> | 3 | competitive-analysis | iterated | Reworded intro, added 2 criteria |
-> | 4 | positioning-workshop | unchanged | — |
+> | # | Skill | Source | Status | Notes |
+> |---|-------|--------|--------|-------|
+> | 1 | roadmap-planning | conversation | iterated | Added stakeholder-review step |
+> | 2 | discovery-process | conversation | unchanged | — |
+> | 3 | competitive-analysis | conversation | iterated | Reworded intro, added 2 criteria |
+> | 4 | positioning-workshop | conversation | unchanged | — |
 >
 > Save all {N} as a new plugin? Reply with a plugin name, `all`, or pick
 > by number (`1, 3`).
+
+When all skills come from Source B, the Source column shows `installed plugin`
+and the Status column shows `original` for every row (no iterations to display).
 
 ## Step 4: Parse user response and plugin name
 
@@ -107,8 +163,9 @@ and re-ask.
 
 ## Step 5: Build the .plugin file
 
-Build the `.plugin` ZIP via Python inside the VM. Since skill content lives
-in conversation (not on disk), pass it as JSON:
+Build the `.plugin` ZIP via Python inside the VM. Pass skill content as JSON
+(the content came from conversation markers in Source A, or from disk reads
+in Source B — the build step doesn't care which):
 
 ```bash
 python3 << 'PYEOF'
@@ -204,10 +261,22 @@ This keeps them usable immediately, even before the user clicks Save plugin.
 > The original `/skills-load` plugin (if still installed) is untouched —
 > this saves AS A SEPARATE PLUGIN with name `{plugin-name}`.
 
+If all skills came from Source B (installed-plugin fallback), add this note:
+
+> **Heads-up:** This plugin was built from the originals on disk because
+> conversation markers were lost to compaction. To capture iterations next
+> time, run `/skills-save` before the conversation gets long enough to
+> compact — or redo your edits in a fresh conversation after reloading with
+> `/skills-load`.
+
 ## Edge cases
 
-- **No `### LOADED SKILL:` markers in conversation**: Exit with a pointer
+- **No `### LOADED SKILL:` markers in conversation**: Fall back to Source B
+  (installed plugins on disk). If Source B is also empty, exit with a pointer
   to `/skills-load`. No plugin is built.
+- **Markers AND installed plugins both exist for the same skills**: Source A
+  wins (iterations are more valuable than originals). Mention in the summary
+  that disk copies exist but aren't being used.
 - **Multiple `/skills-load` runs from different repos**: Show a single
   table listing ALL found skills across sources. Let the user pick which
   to save. Offer "iterated-mixed" as a default name if sources differ.
