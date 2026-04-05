@@ -73,43 +73,73 @@ If filter matches nothing: "No skills matched `{args}`. Found: `{list of names}`
 > **Found {M} skills-toolkit plugins with {N} skills total.**
 > Re-fetching GitHub sources to check for updates…
 
-## Step 4: Re-fetch each unique repository
+## Step 4: Re-fetch each unique source
 
-Collect the unique `repository` URLs across all plugins. For each, clone once
-into a temp directory and cache the path by URL:
+Collect unique `(repository, source.branch)` pairs across all plugins —
+different branches of the same repo need separate fetches. For each unique
+pair, clone once and cache by that pair:
 
 ```bash
-bash "${CLAUDE_SKILL_DIR}/scripts/fetch-repo.sh" "<repository>"
+FETCH_JSON=$(bash "${CLAUDE_SKILL_DIR}/scripts/fetch-repo.sh" "<repository>" "<source.branch>")
+REPO_PATH=$(echo "$FETCH_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin)['path'])")
+FRESH_SHA=$(echo "$FETCH_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin)['sha'])")
 ```
 
-If a repo fails to fetch (404, private, network error), skip that plugin with
-a warning like: "Could not fetch `{owner}/{repo}` — skipping `{plugin-name}`."
-Continue with the other plugins.
+If `source.branch` is empty (plugin installed before the provenance feature),
+call `fetch-repo.sh` with an empty second arg so it defaults to the repo's
+default branch — backward compatibility with older installs.
 
-If more than 10 unique repos, warn about GitHub's 60/hour unauthenticated
-rate limit and mention `GITHUB_TOKEN`.
+If a repo fails to fetch (404, private, network error), skip that plugin with
+a warning like: "Could not fetch `{owner}/{repo}@{branch}` — skipping
+`{plugin-name}`." Continue with the other plugins.
+
+If more than 10 unique source pairs, warn about GitHub's 60/hour
+unauthenticated rate limit and mention `GITHUB_TOKEN`.
+
+## Step 4.5: SHA fast-path check
+
+For each plugin, compare `source.sha` from Step 1 (install-time SHA) against
+`FRESH_SHA` from Step 4 (current upstream HEAD):
+
+- **Both non-empty AND equal** → mark all skills in the plugin as
+  `unchanged`. Skip Step 5–6 for this plugin; jump to Step 7 for
+  presentation.
+- **Both non-empty AND different** → upstream has commits; proceed to Step 5
+  for per-file diff.
+- **`source.sha` empty** (older plugin without provenance) → no short-circuit
+  available; proceed to Step 5.
+- **`FRESH_SHA` empty** (tarball fallback, no `.git/`) → no short-circuit;
+  proceed to Step 5.
+
+This saves a full file-by-file diff when nothing has actually shipped
+upstream — a common case on repeat refresh runs.
 
 ## Step 5: Re-discover skills in each fresh clone
 
-For each successfully-fetched repo:
+For each source pair that did NOT pass the Step 4.5 fast-path, run:
 
 ```bash
 bash "${CLAUDE_SKILL_DIR}/scripts/discover-skills.sh" "<fresh-repo-path>"
 ```
 
-Build a lookup: `{(repo_url, skill_name) → fresh_skill_record}`.
+Build a lookup keyed by `(repo_url, branch, skill_name)` — including branch
+in the key so that two plugins loaded from the same repo but different
+branches stay separate.
 
 ## Step 6: Diff via SHA256
 
-For each installed skill across all plugins:
+For each installed skill whose plugin did NOT fast-path in Step 4.5:
 
-- Look up `(repository, skill.name)` in the fresh catalog.
+- Look up `(repository, source.branch, skill.name)` in the fresh catalog.
 - **Not found** → status `removed_upstream`.
 - **Found** → compute SHA256 of the fresh `SKILL.md`, compare to
   `skill.currentSha` from step 1.
   - Equal → `unchanged`.
   - Differ → `updated`. Optionally compute a brief line diff (added/removed
     counts) by reading both files for display.
+
+Skills from fast-pathed plugins (Step 4.5) retain their `unchanged` status
+set in that step.
 
 ## Step 7: Present the plan and confirm
 

@@ -60,10 +60,22 @@ Sanitize the repo name: only `a-z`, `0-9`, and hyphens. Strip anything else.
 ## Step 2: Fetch the repository
 
 ```bash
-bash "${CLAUDE_SKILL_DIR}/scripts/fetch-repo.sh" "<github-url>" "<branch-if-any>"
+FETCH_JSON=$(bash "${CLAUDE_SKILL_DIR}/scripts/fetch-repo.sh" "<github-url>" "<branch-if-any>")
 ```
 
-Capture the output path. On failure, suggest checking the URL and access.
+`fetch-repo.sh` outputs JSON with four fields: `path`, `branch`, `subpath`, `sha`.
+Parse them all — `path` is needed for skill discovery, the other three are carried
+through to the plugin manifest as source provenance so `/skills-update` can later
+refresh against the SAME branch and do fast-path SHA comparisons.
+
+```bash
+REPO_PATH=$(echo "$FETCH_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin)['path'])")
+BRANCH=$(echo "$FETCH_JSON"    | python3 -c "import json,sys; print(json.load(sys.stdin)['branch'])")
+SUBPATH=$(echo "$FETCH_JSON"   | python3 -c "import json,sys; print(json.load(sys.stdin)['subpath'])")
+SHA=$(echo "$FETCH_JSON"       | python3 -c "import json,sys; print(json.load(sys.stdin)['sha'])")
+```
+
+On failure, suggest checking the URL and access.
 
 ## Step 3: Discover skills
 
@@ -174,16 +186,21 @@ Build it with Bash + Python:
 
 ```bash
 python3 << 'PYEOF'
-import zipfile, json, sys, os, re
+import zipfile, json, sys, os, re, datetime
 
 owner = sys.argv[1]          # e.g., "deanpeters"
 repo = sys.argv[2]           # e.g., "Product-Manager-Skills"
 repo_name = sys.argv[3]      # e.g., "product-manager-skills" (kebab-case)
-skill_dirs = sys.argv[4:]    # list of fullPath directories from discovery
+branch = sys.argv[4]         # e.g., "main" or "develop"
+subpath = sys.argv[5]        # e.g., "" or "skills/pm-stuff"
+sha = sys.argv[6]            # commit SHA or empty string
+skill_dirs = sys.argv[7:]    # list of fullPath directories from discovery
 
 out_dir = '/tmp/skill-outputs'
 os.makedirs(out_dir, exist_ok=True)
 out = os.path.join(out_dir, repo_name + '.plugin')
+
+installed_at = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
 
 with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as zf:
     # Write plugin manifest (includes source provenance)
@@ -193,6 +210,12 @@ with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as zf:
         "version": "1.0.0",
         "author": {"name": "skills-toolkit"},
         "repository": f"https://github.com/{owner}/{repo}",
+        "source": {
+            "branch": branch,
+            "subpath": subpath,
+            "sha": sha,
+            "installedAt": installed_at
+        },
         "keywords": ["skills", "skills-toolkit", repo_name]
     }, indent=2)
     zf.writestr(f".claude-plugin/plugin.json", manifest)
@@ -212,10 +235,13 @@ print(out)
 PYEOF
 ```
 
-Pass `owner`, `repo` (original case), `repo_name` (kebab-case), and all skill
+Pass `owner`, `repo` (original case), `repo_name` (kebab-case), `branch`,
+`subpath`, `sha` (from the fetch-repo.sh JSON output in Step 2), and all skill
 fullPaths as arguments. The repo name should be kebab-case, derived from the
 GitHub repo name (e.g., `Product-Manager-Skills` becomes
-`product-manager-skills`).
+`product-manager-skills`). The `source` object in the manifest lets
+`/skills-update` later refresh against the exact same branch and use SHA
+comparison for a fast "no changes" check.
 
 ### C. Present the .plugin file to Cowork
 
