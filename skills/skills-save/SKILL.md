@@ -211,6 +211,10 @@ repository  = sys.argv[4] if len(sys.argv) > 4 else ""  # Case C provides GitHub
 out_dir = '/tmp/skill-outputs'
 os.makedirs(out_dir, exist_ok=True)
 out = os.path.join(out_dir, plugin_name + '.plugin')
+try:
+    os.remove(out)
+except OSError:
+    pass
 
 skills = json.loads(skills_json)
 

@@ -196,6 +196,10 @@ sources_json = sys.argv[3]         # JSON: [{"skillName":"...", "sourceDir":"/pa
 out_dir = '/tmp/skill-outputs'
 os.makedirs(out_dir, exist_ok=True)
 out = os.path.join(out_dir, plugin_name + '.plugin')
+try:
+    os.remove(out)
+except OSError:
+    pass
 
 sources = json.loads(sources_json)
 
