@@ -194,7 +194,7 @@ plugin_name = "<PLUGIN_NAME>"     # e.g., "product-manager-skills"
 manifest_json = '<MANIFEST_JSON>' # original plugin.json content as string
 sources_json = '<SOURCES_JSON>'   # JSON: [{"skillName":"...", "sourceDir":"/path/to/dir"}, ...]
 
-out_dir = tempfile.mkdtemp(prefix='skill-outputs-')
+out_dir = tempfile.mkdtemp(dir='/outputs', prefix='skill-outputs-')
 out = os.path.join(out_dir, plugin_name + '.plugin')
 
 sources = json.loads(sources_json)

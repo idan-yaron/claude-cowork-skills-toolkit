@@ -197,7 +197,7 @@ subpath = "<SUBPATH>"        # e.g., "" or "skills/pm-stuff"
 sha = "<SHA>"                # commit SHA or empty string
 skill_dirs = [<SKILL_DIRS>]  # e.g., ["/tmp/tmp.abc/repo/skills/roadmap", ...]
 
-out_dir = tempfile.mkdtemp(prefix='skill-outputs-')
+out_dir = tempfile.mkdtemp(dir='/outputs', prefix='skill-outputs-')
 out = os.path.join(out_dir, repo_name + '.plugin')
 
 installed_at = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
