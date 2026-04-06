@@ -209,7 +209,7 @@ skills_json = '<SKILLS_JSON>'   # JSON: [{"name": "...", "body": "..."}, ...]
 is_iterated = <TRUE_OR_FALSE>   # True for Cases A/B/D, False for Case C
 repository  = "<REPO_URL>"      # Case C: "https://github.com/owner/repo"; others: ""
 
-out_dir = tempfile.mkdtemp(prefix='skill-outputs-')
+out_dir = tempfile.mkdtemp(dir='/outputs', prefix='skill-outputs-')
 out = os.path.join(out_dir, plugin_name + '.plugin')
 
 skills = json.loads(skills_json)
