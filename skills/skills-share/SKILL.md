@@ -141,6 +141,10 @@ skill_paths = sys.argv[2:]      # skill directory paths from step 1
 out_dir = '/outputs'
 os.makedirs(out_dir, exist_ok=True)
 out_path = os.path.join(out_dir, pkg_name + '.zip')
+try:
+    os.remove(out_path)
+except OSError:
+    pass
 
 with zipfile.ZipFile(out_path, 'w', zipfile.ZIP_DEFLATED) as zf:
     # Plugin manifest

@@ -199,6 +199,10 @@ skill_dirs = sys.argv[7:]    # list of fullPath directories from discovery
 out_dir = '/tmp/skill-outputs'
 os.makedirs(out_dir, exist_ok=True)
 out = os.path.join(out_dir, repo_name + '.plugin')
+try:
+    os.remove(out)
+except OSError:
+    pass
 
 installed_at = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
 
