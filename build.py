@@ -9,8 +9,8 @@ PLUGIN_ROOT = Path(__file__).parent
 DIST_DIR = PLUGIN_ROOT / "dist"
 PLUGIN_NAME = "skills-toolkit"
 
-EXCLUDE_DIRS = {".git", "dist", "docs", "node_modules", "__pycache__"}
-EXCLUDE_FILES = {"build.py", ".gitignore"}
+EXCLUDE_DIRS = {".git", ".github", "dist", "docs", "node_modules", "__pycache__"}
+EXCLUDE_FILES = {"build.py", ".gitignore", "CONTRIBUTING.md"}
 EXCLUDE_EXTENSIONS = {".zip"}
 
 # Text files get line-ending normalization — the Cowork VM is Linux, and YAML
