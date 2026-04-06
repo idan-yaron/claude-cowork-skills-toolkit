@@ -186,23 +186,19 @@ Build it with Bash + Python:
 
 ```bash
 python3 << 'PYEOF'
-import zipfile, json, sys, os, re, datetime
+import zipfile, json, os, re, datetime, tempfile
 
-owner = sys.argv[1]          # e.g., "deanpeters"
-repo = sys.argv[2]           # e.g., "Product-Manager-Skills"
-repo_name = sys.argv[3]      # e.g., "product-manager-skills" (kebab-case)
-branch = sys.argv[4]         # e.g., "main" or "develop"
-subpath = sys.argv[5]        # e.g., "" or "skills/pm-stuff"
-sha = sys.argv[6]            # commit SHA or empty string
-skill_dirs = sys.argv[7:]    # list of fullPath directories from discovery
+# ── Substitute these values from the /skills-load context ──
+owner = "<OWNER>"            # e.g., "deanpeters"
+repo = "<REPO>"              # e.g., "Product-Manager-Skills"
+repo_name = "<REPO_NAME>"    # e.g., "product-manager-skills" (kebab-case)
+branch = "<BRANCH>"          # e.g., "main" or "develop"
+subpath = "<SUBPATH>"        # e.g., "" or "skills/pm-stuff"
+sha = "<SHA>"                # commit SHA or empty string
+skill_dirs = [<SKILL_DIRS>]  # e.g., ["/tmp/tmp.abc/repo/skills/roadmap", ...]
 
-out_dir = '/tmp/skill-outputs'
-os.makedirs(out_dir, exist_ok=True)
+out_dir = tempfile.mkdtemp(prefix='skill-outputs-')
 out = os.path.join(out_dir, repo_name + '.plugin')
-try:
-    os.remove(out)
-except OSError:
-    pass
 
 installed_at = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
 
@@ -239,13 +235,12 @@ print(out)
 PYEOF
 ```
 
-Pass `owner`, `repo` (original case), `repo_name` (kebab-case), `branch`,
-`subpath`, `sha` (from the fetch-repo.sh JSON output in Step 2), and all skill
-fullPaths as arguments. The repo name should be kebab-case, derived from the
-GitHub repo name (e.g., `Product-Manager-Skills` becomes
-`product-manager-skills`). The `source` object in the manifest lets
-`/skills-update` later refresh against the exact same branch and use SHA
-comparison for a fast "no changes" check.
+Substitute actual values into the `<PLACEHOLDER>` slots above. The assistant
+fills in `owner`, `repo`, `repo_name`, `branch`, `subpath`, `sha`, and
+`skill_dirs` from earlier steps. `skill_dirs` is a Python list of quoted path
+strings. The repo name should be kebab-case (e.g., `Product-Manager-Skills` →
+`product-manager-skills`). The `source` object lets `/skills-update` later
+refresh against the same branch and use SHA for a fast "no changes" check.
 
 ### C. Present the .plugin file to Cowork
 
@@ -253,7 +248,7 @@ Load and call `mcp__cowork__present_files` with the `.plugin` file path:
 
 ```
 Use ToolSearch to load: mcp__cowork__present_files
-Then call it with /tmp/skill-outputs/{repo-name}.plugin
+Then call it with the output path printed by the Python script above.
 ```
 
 Cowork renders a **rich preview** showing the plugin contents. The user can
@@ -309,7 +304,7 @@ conversation ends.
 ## Edge cases
 
 - **present_files unavailable**: Skills are still injected into context (usable
-  by name). The `.plugin` file is still at `/tmp/skill-outputs/{name}.plugin`
+  by name). The `.plugin` file is at the path printed by the build script
   inside the VM — tell the user it's there, or write it to the host via the
   Write tool so they can upload manually via Customize > Personal Plugin.
 - **Name conflict with existing plugin**: Warn the user. Saving the plugin will

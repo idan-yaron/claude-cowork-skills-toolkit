@@ -187,19 +187,15 @@ description, version) so the marker and source URL survive.
 
 ```bash
 python3 << 'PYEOF'
-import zipfile, json, sys, os, re
+import zipfile, json, os, re, tempfile
 
-plugin_name = sys.argv[1]          # e.g., "product-manager-skills"
-manifest_json = sys.argv[2]        # original plugin.json content as string
-sources_json = sys.argv[3]         # JSON: [{"skillName":"...", "sourceDir":"/path/to/dir"}, ...]
+# ── Substitute these values from the /skills-update context ──
+plugin_name = "<PLUGIN_NAME>"     # e.g., "product-manager-skills"
+manifest_json = '<MANIFEST_JSON>' # original plugin.json content as string
+sources_json = '<SOURCES_JSON>'   # JSON: [{"skillName":"...", "sourceDir":"/path/to/dir"}, ...]
 
-out_dir = '/tmp/skill-outputs'
-os.makedirs(out_dir, exist_ok=True)
+out_dir = tempfile.mkdtemp(prefix='skill-outputs-')
 out = os.path.join(out_dir, plugin_name + '.plugin')
-try:
-    os.remove(out)
-except OSError:
-    pass
 
 sources = json.loads(sources_json)
 
@@ -220,8 +216,9 @@ print(out)
 PYEOF
 ```
 
-Pass the original plugin.json string (already includes the repository URL
-and keywords) to preserve traceability for future `/skills-update` runs.
+Substitute actual values into the `<PLACEHOLDER>` slots above. `manifest_json`
+is the original plugin.json string (preserves repository URL and keywords for
+future `/skills-update` runs). `sources_json` is a JSON-encoded array.
 
 ## Step 9: Present each .plugin to Cowork
 
@@ -229,7 +226,7 @@ Load and call `mcp__cowork__present_files` with each rebuilt `.plugin` path:
 
 ```
 Use ToolSearch to load: mcp__cowork__present_files
-Then call it with /tmp/skill-outputs/{plugin-name}.plugin
+Then call it with the output path printed by the Python script above.
 ```
 
 Tell the user what to click:
