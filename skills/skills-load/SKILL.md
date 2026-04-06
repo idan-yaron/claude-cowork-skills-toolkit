@@ -223,13 +223,35 @@ with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as zf:
     # Write each skill
     for skill_path in skill_dirs:
         skill_name = os.path.basename(skill_path)
-        # Sanitize skill directory name
         skill_name = re.sub(r'[^a-zA-Z0-9_-]', '-', skill_name).strip('-')
         for root, dirs, files in os.walk(skill_path):
             for f in files:
                 fp = os.path.join(root, f)
                 arc = "skills/" + skill_name + "/" + os.path.relpath(fp, skill_path)
-                zf.write(fp, arc)
+                if f == 'SKILL.md':
+                    with open(fp, 'r', encoding='utf-8') as fh:
+                        content = fh.read()
+                    # Cowork user-upload rejects SKILL.md > ~12,900 bytes.
+                    # Truncate long description fields to fit.
+                    if len(content.encode('utf-8')) > 12800:
+                        lines = content.split('\n')
+                        fm_end = next((i for i in range(1, len(lines)) if lines[i].strip() == '---'), -1)
+                        if fm_end > 0:
+                            ds = next((i for i in range(1, fm_end) if lines[i].startswith('description')), -1)
+                            if ds >= 0:
+                                de = next((i for i in range(ds+1, fm_end) if lines[i] and not lines[i][0].isspace()), fm_end)
+                                desc = '\n'.join(lines[ds:de])
+                                trim = len(content.encode('utf-8')) - 12800 + 100
+                                if len(desc) > trim + 80:
+                                    short = desc[:len(desc)-trim]
+                                    cut = short.rfind(' ')
+                                    if cut > 50: short = short[:cut]
+                                    lines = lines[:ds] + [short] + lines[de:]
+                                    content = '\n'.join(lines)
+                                    print(f'  [!] Truncated {skill_name}/SKILL.md description to fit 12.8KB limit', flush=True)
+                    zf.writestr(arc, content)
+                else:
+                    zf.write(fp, arc)
 
 print(out)
 PYEOF
