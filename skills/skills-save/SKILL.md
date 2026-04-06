@@ -201,20 +201,16 @@ in Source B — the build step doesn't care which):
 
 ```bash
 python3 << 'PYEOF'
-import zipfile, json, sys, os
+import zipfile, json, os, tempfile
 
-plugin_name = sys.argv[1]          # e.g., "iterated-product-manager-skills" or "geo-seo-claude"
-skills_json = sys.argv[2]          # JSON: [{"name": "...", "body": "..."}, ...]
-is_iterated = sys.argv[3] == "true"  # false for Case C (never-saved load)
-repository  = sys.argv[4] if len(sys.argv) > 4 else ""  # Case C provides GitHub URL
+# ── Substitute these values from the /skills-save context ──
+plugin_name = "<PLUGIN_NAME>"   # e.g., "iterated-product-manager-skills" or "geo-seo-claude"
+skills_json = '<SKILLS_JSON>'   # JSON: [{"name": "...", "body": "..."}, ...]
+is_iterated = <TRUE_OR_FALSE>   # True for Cases A/B/D, False for Case C
+repository  = "<REPO_URL>"      # Case C: "https://github.com/owner/repo"; others: ""
 
-out_dir = '/tmp/skill-outputs'
-os.makedirs(out_dir, exist_ok=True)
+out_dir = tempfile.mkdtemp(prefix='skill-outputs-')
 out = os.path.join(out_dir, plugin_name + '.plugin')
-try:
-    os.remove(out)
-except OSError:
-    pass
 
 skills = json.loads(skills_json)
 
@@ -241,9 +237,10 @@ print(out)
 PYEOF
 ```
 
-Pass the plugin name + JSON array of `{name, body}` objects + `is_iterated`
-flag (`true` for Cases A/B/D, `false` for Case C) + `repository` URL (Case C
-only, drop otherwise).
+Substitute actual values into the `<PLACEHOLDER>` slots above. `skills_json`
+is a JSON-encoded string of `[{"name": "...", "body": "..."}, ...]`.
+`is_iterated` is Python `True` for Cases A/B/D, `False` for Case C.
+`repository` is the GitHub URL for Case C, empty string for others.
 
 **Case C manifest:** no `iterated` keyword, includes `repository` field.
 `/skills-update` will later find it via the `skills-toolkit` keyword and
@@ -259,7 +256,7 @@ the output path from Step 5:
 
 ```
 Use ToolSearch to load: mcp__cowork__present_files
-Then call it with /tmp/skill-outputs/{plugin-name}.plugin
+Then call it with the output path printed by the Python script above.
 ```
 
 Cowork renders a rich preview with a **"Save plugin"** button. Clicking it
@@ -330,7 +327,7 @@ If all skills came from Source B (installed-plugin fallback), add this note:
   discussed. If unsure, use the original injected content and flag as
   "unchanged (could not detect iteration)" in the table.
 - **`present_files` unavailable**: Still re-inject into context (Step 7).
-  Tell the user the `.plugin` file is at `/tmp/skill-outputs/{name}.plugin`
+  Tell the user the `.plugin` file is at the path printed by the build script
   in the VM, or write it to the host via the Write tool for manual upload.
 - **Single loaded skill**: Still package as a `.plugin` for consistency.
   The Save plugin flow works the same way.

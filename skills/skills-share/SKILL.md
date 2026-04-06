@@ -133,18 +133,14 @@ Build the ZIP entirely in Bash+Python. All file reading happens inside the VM
 
 ```bash
 python3 << 'PYEOF'
-import zipfile, json, sys, os, re
+import zipfile, json, os, re, tempfile
 
-pkg_name = sys.argv[1]          # e.g., "my-shared-skills"
-skill_paths = sys.argv[2:]      # skill directory paths from step 1
+# ── Substitute these values from the /skills-share context ──
+pkg_name = "<PKG_NAME>"       # e.g., "my-shared-skills"
+skill_paths = [<SKILL_PATHS>] # e.g., ["/path/to/skill-a", "/path/to/skill-b"]
 
-out_dir = '/outputs'
-os.makedirs(out_dir, exist_ok=True)
+out_dir = tempfile.mkdtemp(dir='/outputs', prefix='skill-share-')
 out_path = os.path.join(out_dir, pkg_name + '.zip')
-try:
-    os.remove(out_path)
-except OSError:
-    pass
 
 with zipfile.ZipFile(out_path, 'w', zipfile.ZIP_DEFLATED) as zf:
     # Plugin manifest
@@ -174,8 +170,9 @@ print(out_path)
 PYEOF
 ```
 
-Pass the sanitized package name and all skill paths as arguments. Capture the
-output path (e.g., `/outputs/my-shared-skills.zip`).
+Substitute actual values into the `<PLACEHOLDER>` slots above. `skill_paths`
+is a Python list of quoted path strings. Capture the output path printed by
+the script.
 
 **Why `.zip` not `.plugin`:** presenting a `.plugin` file via `present_files`
 triggers Cowork's "Save plugin" install button, which is wrong here — the user
