@@ -141,6 +141,21 @@ For each installed skill whose plugin did NOT fast-path in Step 4.5:
 Skills from fast-pathed plugins (Step 4.5) retain their `unchanged` status
 set in that step.
 
+## Step 6.5: Check for conversation-loaded overlap
+
+Before showing the refresh plan, scan THIS conversation for
+`### LOADED SKILL: {name}` markers. Collect the marker skill names into a set.
+
+For each skill in the refresh plan with status `updated` or `removed_upstream`,
+check if its name appears in the conversation-marker set. Track any matches
+as "overlapping" skills — these are skills the user loaded (and may have
+iterated on) in this conversation that the upstream refresh is about to
+overwrite.
+
+If no markers exist, or no overlap with updated skills, skip the warning.
+If ALL overlapping skills are `unchanged`, also skip (upstream didn't change
+them, nothing to overwrite).
+
 ## Step 7: Present the plan and confirm
 
 Show a table grouped by plugin:
@@ -153,7 +168,30 @@ Show a table grouped by plugin:
 > | 2 | product-manager-skills | discovery-process | unchanged | — |
 > | 3 | product-manager-skills | competitive-analysis | removed_upstream | — |
 > | 4 | retros-toolkit | team-retro | updated | +4 −1 |
+
+If Step 6.5 found overlapping skills, add a warning block BEFORE the
+confirmation prompt:
+
+> **Heads up — you have conversation-loaded versions of some of these skills:**
 >
+> | Skill | Refresh status | Conversation state |
+> |-------|---------------|-------------------|
+> | `roadmap-planning` | updated (+12 −3) | loaded in this conversation |
+> | `competitive-analysis` | removed_upstream | loaded in this conversation |
+>
+> Updating from upstream will replace the installed plugin. If you modified
+> these skills during this conversation and want to keep those changes, run
+> `/skills-save` first.
+>
+> Proceed? `yes` (take upstream) / `save-first` (run /skills-save, then
+> re-run /skills-update) / `cancel`
+
+If user replies `save-first`: tell them to run `/skills-save` now and then
+re-run `/skills-update` afterward. Do not auto-chain — keep the commands
+independent.
+
+If no overlap was detected in Step 6.5, show the standard confirmation:
+
 > Refresh all updated? Reply `yes` / `all`, pick by number (`1, 4`),
 > or `none` to cancel.
 
