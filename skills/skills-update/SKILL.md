@@ -45,7 +45,7 @@ across session restarts, VM reboots, and conversation compaction. No
 ## Step 1: Discover installed skills-toolkit plugins
 
 ```bash
-bash "${CLAUDE_SKILL_DIR}/scripts/discover-installed-plugins.sh"
+bash "${CLAUDE_PLUGIN_ROOT}/skills/skills-update/scripts/discover-installed-plugins.sh"
 ```
 
 Returns JSON array of `{pluginName, repository, pluginRoot, manifestPath, keywords, skills: [{name, path, currentSha}]}`.
@@ -80,7 +80,7 @@ different branches of the same repo need separate fetches. For each unique
 pair, clone once and cache by that pair:
 
 ```bash
-FETCH_JSON=$(bash "${CLAUDE_SKILL_DIR}/scripts/fetch-repo.sh" "<repository>" "<source.branch>")
+FETCH_JSON=$(bash "${CLAUDE_PLUGIN_ROOT}/skills/skills-update/scripts/fetch-repo.sh" "<repository>" "<source.branch>")
 REPO_PATH=$(echo "$FETCH_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin)['path'])")
 FRESH_SHA=$(echo "$FETCH_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin)['sha'])")
 ```
@@ -119,7 +119,7 @@ upstream — a common case on repeat refresh runs.
 For each source pair that did NOT pass the Step 4.5 fast-path, run:
 
 ```bash
-bash "${CLAUDE_SKILL_DIR}/scripts/discover-skills.sh" "<fresh-repo-path>"
+bash "${CLAUDE_PLUGIN_ROOT}/skills/skills-update/scripts/discover-skills.sh" "<fresh-repo-path>"
 ```
 
 Build a lookup keyed by `(repo_url, branch, skill_name)` — including branch

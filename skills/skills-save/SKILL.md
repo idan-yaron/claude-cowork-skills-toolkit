@@ -67,7 +67,7 @@ Run the discovery script to find skills-toolkit plugins already installed in
 this Cowork session:
 
 ```bash
-bash "${CLAUDE_SKILL_DIR}/scripts/discover-installed-plugins.sh"
+bash "${CLAUDE_PLUGIN_ROOT}/skills/skills-save/scripts/discover-installed-plugins.sh"
 ```
 
 Returns a JSON array of `{pluginName, pluginRoot, manifestPath, skills: [{name, path, currentSha}]}`.

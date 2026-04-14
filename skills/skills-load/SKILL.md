@@ -60,7 +60,7 @@ Sanitize the repo name: only `a-z`, `0-9`, and hyphens. Strip anything else.
 ## Step 2: Fetch the repository
 
 ```bash
-FETCH_JSON=$(bash "${CLAUDE_SKILL_DIR}/scripts/fetch-repo.sh" "<github-url>" "<branch-if-any>")
+FETCH_JSON=$(bash "${CLAUDE_PLUGIN_ROOT}/skills/skills-load/scripts/fetch-repo.sh" "<github-url>" "<branch-if-any>")
 ```
 
 `fetch-repo.sh` outputs JSON with four fields: `path`, `branch`, `subpath`, `sha`.
@@ -80,7 +80,7 @@ On failure, suggest checking the URL and access.
 ## Step 3: Discover skills
 
 ```bash
-bash "${CLAUDE_SKILL_DIR}/scripts/discover-skills.sh" "<repo-path>"
+bash "${CLAUDE_PLUGIN_ROOT}/skills/skills-load/scripts/discover-skills.sh" "<repo-path>"
 ```
 
 Returns JSON: `[{name, description, path, fullPath}, ...]`
@@ -129,7 +129,7 @@ Before building the plugin, check whether any of the selected skills (user picks
 **A. On-disk installed skills** — run:
 
 ```bash
-bash "${CLAUDE_SKILL_DIR}/scripts/check-installed.sh"
+bash "${CLAUDE_PLUGIN_ROOT}/skills/skills-load/scripts/check-installed.sh"
 ```
 
 Returns a JSON array of skill names present in the SkillsPlugin registry,

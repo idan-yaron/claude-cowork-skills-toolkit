@@ -62,7 +62,7 @@ they want via their OS file picker.
 ## Step 1: Enumerate installed skills
 
 ```bash
-bash "${CLAUDE_SKILL_DIR}/scripts/list-installed-skills.sh"
+bash "${CLAUDE_PLUGIN_ROOT}/skills/skills-share/scripts/list-installed-skills.sh"
 ```
 
 Returns JSON array of `{name, description, path, source}` objects where
