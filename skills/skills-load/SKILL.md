@@ -60,7 +60,7 @@ Sanitize the repo name: only `a-z`, `0-9`, and hyphens. Strip anything else.
 ## Step 2: Fetch the repository
 
 ```bash
-FETCH_JSON=$(bash "${CLAUDE_SKILL_DIR}/scripts/fetch-repo.sh" "<github-url>" "<branch-if-any>")
+FETCH_JSON=$(bash "${CLAUDE_PLUGIN_ROOT}/skills/skills-load/scripts/fetch-repo.sh" "<github-url>" "<branch-if-any>")
 ```
 
 `fetch-repo.sh` outputs JSON with four fields: `path`, `branch`, `subpath`, `sha`.
@@ -80,7 +80,7 @@ On failure, suggest checking the URL and access.
 ## Step 3: Discover skills
 
 ```bash
-bash "${CLAUDE_SKILL_DIR}/scripts/discover-skills.sh" "<repo-path>"
+bash "${CLAUDE_PLUGIN_ROOT}/skills/skills-load/scripts/discover-skills.sh" "<repo-path>"
 ```
 
 Returns JSON: `[{name, description, path, fullPath}, ...]`
@@ -129,7 +129,7 @@ Before building the plugin, check whether any of the selected skills (user picks
 **A. On-disk installed skills** — run:
 
 ```bash
-bash "${CLAUDE_SKILL_DIR}/scripts/check-installed.sh"
+bash "${CLAUDE_PLUGIN_ROOT}/skills/skills-load/scripts/check-installed.sh"
 ```
 
 Returns a JSON array of skill names present in the SkillsPlugin registry,
@@ -186,7 +186,7 @@ Build it with Bash + Python:
 
 ```bash
 python3 << 'PYEOF'
-import zipfile, json, os, re, datetime, tempfile
+import zipfile, json, os, re, datetime, glob
 
 # ── Substitute these values from the /skills-load context ──
 owner = "<OWNER>"            # e.g., "deanpeters"
@@ -197,7 +197,11 @@ subpath = "<SUBPATH>"        # e.g., "" or "skills/pm-stuff"
 sha = "<SHA>"                # commit SHA or empty string
 skill_dirs = [<SKILL_DIRS>]  # e.g., ["/tmp/tmp.abc/repo/skills/roadmap", ...]
 
-out_dir = tempfile.mkdtemp(dir='/outputs', prefix='skill-outputs-')
+# Cowork outputs dir lives at /sessions/<session>/mnt/outputs/ — discover it.
+out_dirs = glob.glob('/sessions/*/mnt/outputs')
+if not out_dirs:
+    raise RuntimeError("Cowork outputs dir not found - is this a Cowork VM session?")
+out_dir = out_dirs[0]
 out = os.path.join(out_dir, repo_name + '.plugin')
 
 installed_at = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
@@ -266,18 +270,19 @@ refresh against the same branch and use SHA for a fast "no changes" check.
 
 ### C. Present the .plugin file to Cowork
 
-Load and call `mcp__cowork__present_files` with the `.plugin` file path:
+Load `mcp__cowork__present_files` via ToolSearch, then call it with this exact
+shape — `files` is a list of objects, each with a single `file_path` key:
 
 ```
-Use ToolSearch to load: mcp__cowork__present_files
-Then call it with the output path printed by the Python script above.
+mcp__cowork__present_files(files=[{"file_path": "<output-path-from-python>"}])
 ```
 
-Cowork renders a **rich preview** showing the plugin contents. The user can
-browse the included skills and click **"Save plugin"** to install the entire plugin
-at once. All skills appear in the `/` menu immediately.
+The path MUST be the Linux path printed by the Python script above (under
+`/sessions/<session>/mnt/outputs/`). Windows-style paths and `/outputs/` paths
+are rejected.
 
-If `present_files` isn't available, try `mcp__cowork__create_artifact`.
+Cowork renders a rich preview of the plugin and the user clicks **"Save plugin"**
+to install. All skills appear in the `/` menu immediately, mid-session.
 
 ### D. Inject into conversation
 

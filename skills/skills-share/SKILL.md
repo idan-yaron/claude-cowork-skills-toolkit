@@ -31,16 +31,16 @@ trigger — the user gets a standard file download instead.
 **This skill is for exporting what you already have.** To get new skills from
 a GitHub repo, use `/skills-load`.
 
-## VM constraints (why we use /outputs and .zip)
+## VM constraints (why we use the session outputs folder and .zip)
 
 The Cowork VM has a fixed set of mount points. None of them is the user's
 Desktop or an arbitrary host path — the Write tool cannot reach
 `~/Desktop/anything` unless the user has explicitly mounted that folder.
 
-What DOES work: `/outputs/` is a VM→host bridge mount. Files written there are
-surfaced in the Cowork UI by `mcp__cowork__present_files`. A `.zip` file
-presented this way gives the user a download button — they save it wherever
-they want via their OS file picker.
+What DOES work: `/sessions/<session>/mnt/outputs/` is a VM→host bridge mount.
+Files written there are surfaced in the Cowork UI by `mcp__cowork__present_files`.
+A `.zip` file presented this way gives the user a download button — they save
+it wherever they want via their OS file picker.
 
 - **Bash** runs in the VM — use it to enumerate installed skills AND build
   the ZIP entirely inside the VM.
@@ -62,7 +62,7 @@ they want via their OS file picker.
 ## Step 1: Enumerate installed skills
 
 ```bash
-bash "${CLAUDE_SKILL_DIR}/scripts/list-installed-skills.sh"
+bash "${CLAUDE_PLUGIN_ROOT}/skills/skills-share/scripts/list-installed-skills.sh"
 ```
 
 Returns JSON array of `{name, description, path, source}` objects where
@@ -133,13 +133,17 @@ Build the ZIP entirely in Bash+Python. All file reading happens inside the VM
 
 ```bash
 python3 << 'PYEOF'
-import zipfile, json, os, re, tempfile
+import zipfile, json, os, re, glob
 
 # ── Substitute these values from the /skills-share context ──
 pkg_name = "<PKG_NAME>"       # e.g., "my-shared-skills"
 skill_paths = [<SKILL_PATHS>] # e.g., ["/path/to/skill-a", "/path/to/skill-b"]
 
-out_dir = tempfile.mkdtemp(dir='/outputs', prefix='skill-share-')
+# Cowork outputs dir lives at /sessions/<session>/mnt/outputs/ — discover it.
+out_dirs = glob.glob('/sessions/*/mnt/outputs')
+if not out_dirs:
+    raise RuntimeError("Cowork outputs dir not found - is this a Cowork VM session?")
+out_dir = out_dirs[0]
 out_path = os.path.join(out_dir, pkg_name + '.zip')
 
 with zipfile.ZipFile(out_path, 'w', zipfile.ZIP_DEFLATED) as zf:
@@ -179,26 +183,26 @@ triggers Cowork's "Save plugin" install button, which is wrong here — the user
 already has these skills installed. `.zip` surfaces as a plain download, and
 it's still directly accepted by Customize > Personal Plugin on the receiving end.
 
-**Why `/outputs/` not `/tmp/`:** `/outputs/` is a VM→host bridge mount that
-`present_files` surfaces in the Cowork UI. `/tmp/` is VM-only.
+**Why the session outputs folder, not `/tmp/`:** `/sessions/<session>/mnt/outputs/`
+is a VM→host bridge mount that `present_files` surfaces in the Cowork UI.
+`/tmp/` is VM-only.
 
 ## Step 5: Present the .zip for download
 
-Use `ToolSearch` to load `mcp__cowork__present_files`, then call it with the
-output path from step 4:
+Load `mcp__cowork__present_files` via ToolSearch, then call it with this exact
+shape — `files` is a list of objects, each with a single `file_path` key:
 
 ```
-Use ToolSearch to load: mcp__cowork__present_files
-Then call it with the .zip path from step 4
+mcp__cowork__present_files(files=[{"file_path": "<zip-path-from-python>"}])
 ```
+
+The path MUST be the Linux path printed by the Python script in step 4 (under
+`/sessions/<session>/mnt/outputs/`). Windows-style paths and `/outputs/` paths
+are rejected.
 
 The Cowork UI shows a download action. The user clicks it, picks a location
 with their OS file picker (Desktop, Documents, anywhere), and the file lands
 on their host. No mount configuration needed, no manual zipping.
-
-If `present_files` isn't available, tell the user the file is at
-`/outputs/{pkg-name}.zip` inside the VM, which maps to Cowork's session
-outputs folder on disk.
 
 ## Step 6: Report
 
@@ -231,7 +235,7 @@ outputs folder on disk.
   correctly into the ZIP — no content passes through Claude. This is an
   advantage of the VM-build approach.
 - **`present_files` unavailable**: Tell the user the file is at
-  `/outputs/{pkg-name}.zip` in the VM. The session outputs folder maps to
-  Cowork's app data on the host — on Windows that's
+  `/sessions/<session>/mnt/outputs/{pkg-name}.zip` in the VM. The session
+  outputs folder maps to Cowork's app data on the host — on Windows that's
   `%APPDATA%\Claude\local-agent-mode-sessions\...`, on macOS it's
   `~/Library/Application Support/Claude/local-agent-mode-sessions/...`.

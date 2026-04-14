@@ -45,7 +45,7 @@ across session restarts, VM reboots, and conversation compaction. No
 ## Step 1: Discover installed skills-toolkit plugins
 
 ```bash
-bash "${CLAUDE_SKILL_DIR}/scripts/discover-installed-plugins.sh"
+bash "${CLAUDE_PLUGIN_ROOT}/skills/skills-update/scripts/discover-installed-plugins.sh"
 ```
 
 Returns JSON array of `{pluginName, repository, pluginRoot, manifestPath, keywords, skills: [{name, path, currentSha}]}`.
@@ -80,7 +80,7 @@ different branches of the same repo need separate fetches. For each unique
 pair, clone once and cache by that pair:
 
 ```bash
-FETCH_JSON=$(bash "${CLAUDE_SKILL_DIR}/scripts/fetch-repo.sh" "<repository>" "<source.branch>")
+FETCH_JSON=$(bash "${CLAUDE_PLUGIN_ROOT}/skills/skills-update/scripts/fetch-repo.sh" "<repository>" "<source.branch>")
 REPO_PATH=$(echo "$FETCH_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin)['path'])")
 FRESH_SHA=$(echo "$FETCH_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin)['sha'])")
 ```
@@ -119,7 +119,7 @@ upstream — a common case on repeat refresh runs.
 For each source pair that did NOT pass the Step 4.5 fast-path, run:
 
 ```bash
-bash "${CLAUDE_SKILL_DIR}/scripts/discover-skills.sh" "<fresh-repo-path>"
+bash "${CLAUDE_PLUGIN_ROOT}/skills/skills-update/scripts/discover-skills.sh" "<fresh-repo-path>"
 ```
 
 Build a lookup keyed by `(repo_url, branch, skill_name)` — including branch
@@ -225,14 +225,18 @@ description, version) so the marker and source URL survive.
 
 ```bash
 python3 << 'PYEOF'
-import zipfile, json, os, re, tempfile
+import zipfile, json, os, re, glob
 
 # ── Substitute these values from the /skills-update context ──
 plugin_name = "<PLUGIN_NAME>"     # e.g., "product-manager-skills"
 manifest_json = '<MANIFEST_JSON>' # original plugin.json content as string
 sources_json = '<SOURCES_JSON>'   # JSON: [{"skillName":"...", "sourceDir":"/path/to/dir"}, ...]
 
-out_dir = tempfile.mkdtemp(dir='/outputs', prefix='skill-outputs-')
+# Cowork outputs dir lives at /sessions/<session>/mnt/outputs/ — discover it.
+out_dirs = glob.glob('/sessions/*/mnt/outputs')
+if not out_dirs:
+    raise RuntimeError("Cowork outputs dir not found - is this a Cowork VM session?")
+out_dir = out_dirs[0]
 out = os.path.join(out_dir, plugin_name + '.plugin')
 
 sources = json.loads(sources_json)
@@ -281,12 +285,20 @@ future `/skills-update` runs). `sources_json` is a JSON-encoded array.
 
 ## Step 9: Present each .plugin to Cowork
 
-Load and call `mcp__cowork__present_files` with each rebuilt `.plugin` path:
+Load `mcp__cowork__present_files` via ToolSearch, then call it for each rebuilt
+plugin. The `files` parameter is a list of objects with a single `file_path`
+key — you can present multiple plugins in one call:
 
 ```
-Use ToolSearch to load: mcp__cowork__present_files
-Then call it with the output path printed by the Python script above.
+mcp__cowork__present_files(files=[
+  {"file_path": "<plugin-1-path>"},
+  {"file_path": "<plugin-2-path>"}
+])
 ```
+
+Each path MUST be the Linux path printed by the Python script (under
+`/sessions/<session>/mnt/outputs/`). Windows-style paths and `/outputs/` paths
+are rejected.
 
 Tell the user what to click:
 
@@ -294,13 +306,8 @@ Tell the user what to click:
 > **"Save plugin"** on the preview above. Cowork will prompt to replace the
 > existing version.
 
-If multiple plugins were rebuilt, present them in separate messages so each
-preview is visible.
-
-If `mcp__cowork__present_files` isn't available, try
-`mcp__cowork__create_artifact`, or fall back to writing the `.plugin` to the
-host via the Write tool and telling the user to upload via
-Customize > Personal Plugin.
+If multiple plugins were rebuilt, presenting them together in a single call
+shows all previews at once.
 
 ## Step 10: Inject updated content
 
