@@ -201,7 +201,7 @@ in Source B — the build step doesn't care which):
 
 ```bash
 python3 << 'PYEOF'
-import zipfile, json, os, tempfile
+import zipfile, json, os, glob
 
 # ── Substitute these values from the /skills-save context ──
 plugin_name = "<PLUGIN_NAME>"   # e.g., "iterated-product-manager-skills" or "geo-seo-claude"
@@ -209,7 +209,11 @@ skills_json = '<SKILLS_JSON>'   # JSON: [{"name": "...", "body": "..."}, ...]
 is_iterated = <TRUE_OR_FALSE>   # True for Cases A/B/D, False for Case C
 repository  = "<REPO_URL>"      # Case C: "https://github.com/owner/repo"; others: ""
 
-out_dir = tempfile.mkdtemp(dir='/outputs', prefix='skill-outputs-')
+# Cowork outputs dir lives at /sessions/<session>/mnt/outputs/ — discover it.
+out_dirs = glob.glob('/sessions/*/mnt/outputs')
+if not out_dirs:
+    raise RuntimeError("Cowork outputs dir not found - is this a Cowork VM session?")
+out_dir = out_dirs[0]
 out = os.path.join(out_dir, plugin_name + '.plugin')
 
 skills = json.loads(skills_json)
@@ -251,22 +255,21 @@ tells `/skills-update` to skip these (they have no upstream).
 
 ## Step 6: Present the .plugin file to Cowork
 
-Use `ToolSearch` to load `mcp__cowork__present_files`, then call it with
-the output path from Step 5:
+Load `mcp__cowork__present_files` via ToolSearch, then call it with this exact
+shape — `files` is a list of objects, each with a single `file_path` key:
 
 ```
-Use ToolSearch to load: mcp__cowork__present_files
-Then call it with the output path printed by the Python script above.
+mcp__cowork__present_files(files=[{"file_path": "<output-path-from-python>"}])
 ```
+
+The path MUST be the Linux path printed by the Python script above (under
+`/sessions/<session>/mnt/outputs/`). Windows-style paths and `/outputs/` paths
+are rejected.
 
 Cowork renders a rich preview with a **"Save plugin"** button. Clicking it
 installs the iterated plugin — distinct from the original GitHub-sourced
 plugin (they have different names if you used the default `iterated-*`
 prefix).
-
-If `present_files` is unavailable, fall back to `mcp__cowork__create_artifact`
-or write the `.plugin` to the host via the Write tool for manual upload
-via Customize > Personal Plugin.
 
 ## Step 7: Re-inject into conversation
 
